@@ -30,12 +30,28 @@ func main() {
 			os.Exit(0)
 		}
 
-		if strings.HasPrefix(command, "echo "){
+		if strings.HasPrefix(command,"type "){
+			text:= strings.TrimSpace(command[5:])
+			switch  text {
+			case "echo":
+				fmt.Println(text + " is a shell builtin")
+			case "type":
+				fmt.Println(text + " is a shell builtin")
+			case "exit":
+				fmt.Println(text + " is a shell builtin")
+			default:
+				fmt.Println(text+": not found")
+			}
+			// os.Exit(0)
+		}else if strings.HasPrefix(command, "echo "){
 			text := strings.TrimSpace(command[5:])
 			fmt.Println(text)
 			continue
+		}else {
+			fmt.Printf("%s: command not found\n", command)
 		}
-		fmt.Printf("%s: command not found\n", command)
+		
+
 
 	}
 	
