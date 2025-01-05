@@ -12,8 +12,6 @@ var _ = fmt.Fprint
 
 func main() {
 	// Uncomment this block to pass the first stage
-	
-	
 	// Wait for user input
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
@@ -27,13 +25,17 @@ func main() {
 		command = strings.TrimSpace(command)
 
 
-		switch command {
-		case "exit 0":
+		if command=="exit 0" {
+			// fmt.Println("Exiting...")
 			os.Exit(0)
-		default:
-			fmt.Printf("%s: command not found\n", command)
-			
 		}
+
+		if strings.HasPrefix(command, "echo "){
+			text := strings.TrimSpace(command[5:])
+			fmt.Println(text)
+			continue
+		}
+		fmt.Printf("%s: command not found\n", command)
 
 	}
 	
