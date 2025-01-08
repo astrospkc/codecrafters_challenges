@@ -16,7 +16,8 @@ var _ = fmt.Fprint
 func main() {
 	// Uncomment this block to pass the first stage
 	// Wait for user input
-	initCommands()
+	// initCommands()
+	
 	for {
 		fmt.Fprint(os.Stdout, "$ ")
 		in, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -26,20 +27,60 @@ func main() {
 			os.Exit(1)
 		}
 		
-		inputCmd := strings.Split(strings.TrimSpace(in)," ")
+		inputCmd := strings.Split(strings.TrimRight(in,"\n")," ")
 		// the command to execute()
-		cmd := inputCmd[0]
-		args:= inputCmd[1:]
 
-		// the command created
-		cmd_operate := exec.Command(cmd, args...)
-		output, err:= cmd_operate.CombinedOutput()
-		if err!=nil{
-			fmt.Printf(os.Stderr, "Error executing command: %v\n", err)
-			return
+		switch inputCmd[0] {
+		case "exit":
+			os.Exit(0)
+		case "echo":
+			fmt.Println(strings.Join(inputCmd[1:]," "))
+		case "type":
+			switch inputCmd[1]{
+			case "exit", "echo", "type":
+				fmt.Printf("%s is a shell builtin\n",inputCmd[1])
+			default:
+				paths := strings.Split(os.Getenv("PATH"),":")
+				isFound := false
+				for _ , path := range paths{
+					fp := filepath.Join(path, inputCmd[1])
+					if _, err := os.Stat(fp); !os.IsNotExist(err){
+						fmt.Printf("%s is %s\n", inputCmd[1], fp)
+						isFound = true
+						break
+					}
+				}
+				if !isFound{
+					fmt.Printf("%s: not found\n", inputCmd[1])
+				}
+			}
+		default:
+			command := exec.Command(inputCmd[0], inputCmd[1:]...)
+			command.Stderr  = os.Stderr
+			command.Stdout = os.Stdout
+			err := command.Run()
+			if err !=nil{
+				fmt.Printf("%s: command not found\n", inputCmd[0])
+			}
+			
 		}
 
-		fmt.Println(string(output))
+
+		// if len(inputCmd)==0{
+		// 	continue
+		// }
+		// cmd := inputCmd[0]
+		// args:= inputCmd[1:]
+
+		// // the command created
+		// cmd_operate := exec.Command(cmd, args...)
+		// output, err:= cmd_operate.CombinedOutput()
+		// if err!=nil{
+		// 	fmt.Fprintf(os.Stderr, "Error executing command: %v\n", err)
+		// 	continue
+		// }
+
+		// fmt.Println(string(output))
 
 		// cmdFn, ok := commands[cmd]
 		// if !ok{
