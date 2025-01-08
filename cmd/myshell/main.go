@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -26,16 +27,26 @@ func main() {
 		}
 		
 		inputCmd := strings.Split(strings.TrimSpace(in)," ")
-		
+		// the command to execute()
 		cmd := inputCmd[0]
 		args:= inputCmd[1:]
 
-		cmdFn, ok := commands[cmd]
-		if !ok{
-			notFound(cmd)
-		}else{
-			cmdFn(args)
+		// the command created
+		cmd_operate := exec.Command(cmd, args...)
+		output, err:= cmd_operate.CombinedOutput()
+		if err!=nil{
+			fmt.Printf(os.Stderr, "Error executing command: %v\n", err)
+			return
 		}
+
+		fmt.Println(string(output))
+
+		// cmdFn, ok := commands[cmd]
+		// if !ok{
+		// 	notFound(cmd)
+		// }else{
+		// 	cmdFn(args)
+		// }
 
 	}
 }
