@@ -9,181 +9,182 @@ import (
 	"strings"
 )
 
-func main(){
+func main() {
 	reader := bufio.NewReader(os.Stdin)
 
-	for{
+	for {
 		inputHandler(reader)
 	}
 }
 
-func isBuiltin(command string) bool{
-	switch command{
-		case 
-			"echo",
-			"exit",
-			"type",
-			"pwd",
-			"cd":
-			return true
-		default:
-			return false
+func isBuiltin(command string) bool {
+	switch command {
+	case
+		"echo",
+		"exit",
+		"type",
+		"pwd",
+		"cd":
+		return true
+	default:
+		return false
 	}
 }
 
-func isInPath(command string) (string , bool){
+func isInPath(command string) (string, bool) {
 	value, exists := os.LookupEnv("PATH")
-	if !exists{
+	if !exists {
 		return "", false
 	}
-	pathArr := strings.Split(value,":")
-	for _,path :=range pathArr {
+	pathArr := strings.Split(value, ":")
+	for _, path := range pathArr {
 		filename := path + "/" + command
 		_, err := os.Stat(filename)
-		if !errors.Is(err, os.ErrNotExist){
+		if !errors.Is(err, os.ErrNotExist) {
 			return filename, true
 		}
 	}
 	return "", false
 }
 
-func parseCommand(command string) []string{
+func parseCommand(command string) []string {
 	var result []string
 	var temp strings.Builder
-	singleQuoted :=false
+	singleQuoted := false
 	doubleQuoted := false
 	backSlashed := false
-	for i:=0; i<len(command);i++{
+	for i := 0; i < len(command); i++ {
 		char := command[i]
 		// fmt.Println("char: ", char)
 		switch char {
 		case ' ':
-			if singleQuoted || doubleQuoted || backSlashed{
+			if singleQuoted || doubleQuoted || backSlashed {
 				temp.WriteByte(char)
-				if backSlashed{
+				if backSlashed {
 					backSlashed = false
 				}
-			}else if temp.Len()>0{
+			} else if temp.Len() > 0 {
 				result = append(result, temp.String())
 				temp.Reset()
 			}
 		case '\'':
-			if doubleQuoted{
+			if doubleQuoted {
 				temp.WriteByte(char)
-				
-			}else if singleQuoted{
+
+			} else if singleQuoted {
 				singleQuoted = false
-			}else {
+			} else {
 				singleQuoted = true
 			}
 		case '"':
 			if doubleQuoted {
 				doubleQuoted = false
-			}else if singleQuoted{
+			} else if singleQuoted {
 				temp.WriteByte(char)
-			}else {
+			} else {
 				doubleQuoted = true
 			}
 		case '\\':
-			if !singleQuoted && (i<len(command)-1 && command[i+1]=='\\' || command[i+1]=='$'||command[i+1]=='"'){
+			if !singleQuoted && (i < len(command)-1 && command[i+1] == '\\' || command[i+1] == '$' || command[i+1] == '"') {
 				nextChar := command[i+1]
 				temp.WriteByte(nextChar)
 				i++
-			}else if singleQuoted || doubleQuoted{
+			} else if singleQuoted || doubleQuoted {
 				temp.WriteByte(char)
-			}else {
+			} else {
 				backSlashed = true
 			}
 		default:
 			temp.WriteByte(char)
 		}
 	}
-	if temp.Len()>0{
-			result = append(result, temp.String())
+	if temp.Len() > 0 {
+		result = append(result, temp.String())
 	}
 	return result
 }
 
-func writeToFile(file string, output string)error{
+func writeToFile(file string, output string) error {
 	err := os.WriteFile(file, []byte(output), 0o777)
 	return err
 }
 
-func inputHandler(reader *bufio.Reader){
+func inputHandler(reader *bufio.Reader) {
 	fmt.Fprint(os.Stdout, "$ ")
-	text,_ := reader.ReadString('\n')
-	text = strings.Trim(text,"\r\n")
+	text, _ := reader.ReadString('\n')
+	text = strings.Trim(text, "\r\n")
+	fmt.Fprint(os.Stderr, "$ ")
 
 	textArr := parseCommand(text)
 	stdOutput := ""
 	command := textArr[0]
 	args := textArr[1:]
 	var secondaryCommand []string
-	for index, arg := range args{
-		if arg == "1>" || arg==">"{
-			args = textArr[1:index+1]
+	for index, arg := range args {
+		if arg == "1>" || arg == ">" {
+			args = textArr[1 : index+1]
 			secondaryCommand = textArr[index+1:]
 		}
 	}
-	switch  command {
+	switch command {
 	case "exit":
 		os.Exit(0)
 	case "echo":
-		stdOutput = strings.Join(args," ") +"\n"
+		stdOutput = strings.Join(args, " ") + "\n"
 	case "type":
 		filename, existsInPath := isInPath(args[0])
-		if isBuiltin(args[0]){
-			stdOutput = args[0] +" is a shell builtin\n"
-		}else if existsInPath{
+		if isBuiltin(args[0]) {
+			stdOutput = args[0] + " is a shell builtin\n"
+		} else if existsInPath {
 			stdOutput = filename + "\n"
-		}else{
-			stdOutput = args[0] +": not found\n"
+		} else {
+			stdOutput = args[0] + ": not found\n"
 		}
 	case "pwd":
 		pwd, err := os.Getwd()
-		if err!=nil{
+		if err != nil {
 			fmt.Println("Error printing the directory: ", err)
 
-		}else{
+		} else {
 			stdOutput = pwd + "\n"
 		}
 	case "cd":
 		path := args[0]
-		if args[0] == "~"{
+		if args[0] == "~" {
 			path = os.Getenv("HOME")
 		}
 		err := os.Chdir(path)
-		if err !=nil{
+		if err != nil {
 			stdOutput = "cd: " + args[0] + ": No such file or directory\n"
 		}
 	default:
 		_, existsInPath := isInPath(command)
 		if existsInPath {
 			cmd := exec.Command(command, args...)
-			stdout,err := cmd.Output()
-			if err!=nil{
-				if exitErr, ok := err.(*exec.ExitError); ok{
+			stdout, err := cmd.Output()
+			if err != nil {
+				if exitErr, ok := err.(*exec.ExitError); ok {
 					fmt.Print(string(exitErr.Stderr))
-				}else{
+				} else {
 					fmt.Print("error:", err)
 				}
-				
+
 			}
 			stdOutput = string(stdout)
-		}else{
+		} else {
 			stdOutput = text + ": command not found\n"
 		}
 
 	}
 
-	if len(secondaryCommand) >0{
+	if len(secondaryCommand) > 0 {
 		secondCommand := secondaryCommand[0]
 		secondArgs := secondaryCommand[1:]
 
-		switch secondCommand{
+		switch secondCommand {
 		case ">", "1>":
-			err:=writeToFile(secondArgs[0],stdOutput)
-			if err != nil{
+			err := writeToFile(secondArgs[0], stdOutput)
+			if err != nil {
 				fmt.Println("Error:", err)
 			}
 		}
